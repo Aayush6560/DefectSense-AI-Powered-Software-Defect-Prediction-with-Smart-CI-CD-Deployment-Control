@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DefectSense — Runtime Console</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030712;
+  --surface: rgba(255,255,255,0.03);
+  --surface2: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.07);
+  --accent: #6366f1;
+  --accent2: #22d3ee;
+  --danger: #ef4444;
+  --warn: #f59e0b;
+  --success: #10b981;
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Satoshi', sans-serif;
+  --radius: 16px;
+  --transition: 180ms cubic-bezier(0.16,1,0.3,1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+.bg-base {
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(99,102,241,0.07) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(34,211,238,0.05) 0%, transparent 50%);
+}
+.grid-bg {
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.layout { position: relative; z-index: 1; }
+
+nav {
+  background: rgba(3,7,18,0.9); border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(20px); padding: 0 2rem;
+  display: flex; align-items: center; justify-content: space-between; height: 56px;
+  position: sticky; top: 0; z-index: 50;
+}
+.nav-brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
+.nav-logo {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center; font-size: 0.875rem;
+}
+.nav-title { font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; color: var(--text); }
+.live-badge {
+  display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem;
+  font-family: var(--mono); color: var(--success);
+  background: rgba(16,185,129,0.1); padding: 0.35rem 0.75rem; border-radius: 20px;
+  border: 1px solid rgba(16,185,129,0.2);
+}
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 1.5s ease infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+.back-link { font-size: 0.8125rem; color: var(--text-muted); text-decoration: none; transition: color var(--transition); }
+.back-link:hover { color: var(--text); }
+
+.main { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+.stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 600; margin-bottom: 0.5rem; }
+.stat-value { font-size: 2rem; font-weight: 700; font-family: var(--mono); line-height: 1; }
+.stat-value.cpu { color: var(--accent); }
+.stat-value.mem { color: var(--accent2); }
+.stat-value.disk { color: var(--warn); }
+.stat-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+.progress-track { height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; margin-top: 0.75rem; }
+.progress-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+.progress-fill.cpu { background: linear-gradient(90deg, var(--accent), #8b5cf6); }
+.progress-fill.mem { background: linear-gradient(90deg, var(--accent2), #06b6d4); }
+.progress-fill.disk { background: linear-gradient(90deg, var(--warn), #f97316); }
+.mini-chart { display: flex; align-items: flex-end; gap: 2px; height: 48px; margin-top: 0.75rem; }
+.mini-bar { flex: 1; border-radius: 2px 2px 0 0; transition: height 0.5s; min-height: 2px; }
+.mini-bar.cpu { background: var(--accent); opacity: 0.7; }
+.mini-bar.mem { background: var(--accent2); opacity: 0.7; }
+
+.model-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.model-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; text-align: center; }
+.model-stat-val { font-size: 1.5rem; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+.model-stat-label { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+.content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+.card-title {
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-muted); font-weight: 600; margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 0.5rem; justify-content: space-between;
+}
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.count-badge {
+  font-size: 0.65rem; background: var(--surface2); border: 1px solid var(--border);
+  padding: 2px 8px; border-radius: 4px; font-family: var(--mono);
+}
+.status-note { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.5; }
+.container-item {
+  display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.container-item:last-child { border-bottom: none; }
+.item-name { font-family: var(--mono); font-size: 0.8rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-sub { font-family: var(--mono); font-size: 0.7rem; color: var(--text-muted); }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 0.65rem;
+  font-family: var(--mono); padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
+}
+.status-pill.running { background: rgba(16,185,129,0.12); color: #6ee7b7; }
+.status-pill.stopped { background: rgba(239,68,68,0.12); color: #fca5a5; }
+.status-pill.pending { background: rgba(245,158,11,0.12); color: #fde68a; }
+.empty-msg { color: var(--text-muted); font-size: 0.875rem; text-align: center; padding: 1.5rem 0; }
+
+.row-table { width: 100%; }
+.row-table tr { border-bottom: 1px solid var(--border); }
+.row-table tr:last-child { border-bottom: none; }
+.row-table td { padding: 0.4rem 0; font-size: 0.8125rem; line-height: 2; }
+.row-table td:first-child { color: var(--text-muted); }
+.row-table td:last-child { font-family: var(--mono); font-size: 0.75rem; text-align: right; }
+
+.pipeline-mini { display: flex; align-items: center; gap: 0.625rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.pipeline-mini:last-child { border-bottom: none; }
+.pipeline-mini .file { font-family: var(--mono); font-size: 0.75rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pipeline-mini .prob { font-family: var(--mono); font-size: 0.75rem; flex-shrink: 0; }
+
+@media (max-width: 900px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .model-grid { grid-template-columns: repeat(2, 1fr); }
+  .content-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .main { padding: 1rem; }
+}
+</style>
+</head>
+<body>
+<div class="bg-base"></div>
+<div class="grid-bg"></div>
+<div class="layout">
+  <nav>
+    <a href="/app" class="nav-brand">
+      <div class="nav-logo">⬡</div>
+      <span class="nav-title">DefectSense</span>
+    </a>
+    <div class="live-badge"><div class="live-dot"></div>Runtime stream · 3s</div>
+    <a href="/app" class="back-link">← Workbench</a>
+  </nav>
+
+  <div class="main">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Compute Load</div>
+        <div class="stat-value cpu" id="cpu-val">—</div>
+        <div class="stat-sub" id="cpu-sub">Loading...</div>
+        <div class="progress-track"><div class="progress-fill cpu" id="cpu-bar" style="width:0%"></div></div>
+        <div class="mini-chart" id="cpu-chart"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Memory Pressure</div>
+        <div class="stat-value mem" id="mem-val">—</div>
+        <div class="stat-sub" id="mem-sub">Loading...</div>
+        <div class="progress-track"><div class="progress-fill mem" id="mem-bar" style="width:0%"></div></div>
+        <div class="mini-chart" id="mem-chart"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Storage Pressure</div>
+        <div class="stat-value disk" id="disk-val">—</div>
+        <div class="stat-sub" id="disk-sub">Loading...</div>
+        <div class="progress-track"><div class="progress-fill disk" id="disk-bar" style="width:0%"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pipeline Sessions</div>
+        <div class="stat-value" style="color:var(--success)" id="pipeline-count">0</div>
+        <div class="stat-sub">Total CI sessions completed</div>
+        <div style="margin-top:1rem;font-size:0.7rem;font-family:var(--mono);color:var(--text-muted);">
+          ↑ <span id="net-sent">—</span> MB &nbsp;↓ <span id="net-recv">—</span> MB
+        </div>
+      </div>
+    </div>
+
+    <div class="model-grid">
+      <div class="model-stat">
+        <div class="model-stat-val" id="model-auc">—</div>
+        <div class="model-stat-label">AUC-ROC</div>
+      </div>
+      <div class="model-stat">
+        <div class="model-stat-val" id="model-f1" style="color:var(--accent2)">—</div>
+        <div class="model-stat-label">F1 Score</div>
+      </div>
+      <div class="model-stat">
+        <div class="model-stat-val" style="color:var(--warn)">21</div>
+        <div class="model-stat-label">Signal Features</div>
+      </div>
+      <div class="model-stat">
+        <div class="model-stat-val" id="model-ntrain" style="color:var(--success)">—</div>
+        <div class="model-stat-label">Training Records</div>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <div class="card">
+        <div class="card-title">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div class="dot" style="background:#2496ed"></div>Container Runtime
+          </div>
+          <span class="count-badge" id="container-count">—</span>
+        </div>
+        <div class="status-note" id="docker-note">Checking local Docker state...</div>
+        <div id="containers-list"><div class="empty-msg">Loading...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div class="dot" style="background:#326ce5"></div>Cluster Workloads
+          </div>
+          <span class="count-badge" id="pods-count">—</span>
+        </div>
+        <div class="status-note" id="k8s-note">Checking Kubernetes state...</div>
+        <div id="pods-list"><div class="empty-msg">Loading...</div></div>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <div class="card">
+        <div class="card-title">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div class="dot" style="background:var(--accent)"></div>Model Brief
+          </div>
+          <span class="count-badge" id="model-status-badge">—</span>
+        </div>
+        <table class="row-table" id="model-table">
+          <tbody>
+            <tr><td>Topology</td><td id="m-arch">—</td></tr>
+            <tr><td>Selected Model</td><td id="m-selected">—</td></tr>
+            <tr><td>Threshold</td><td id="m-threshold">—</td></tr>
+            <tr><td>SMOTE Applied</td><td id="m-smote">—</td></tr>
+            <tr><td>Corpus</td><td>NASA KC1 PROMISE</td></tr>
+            <tr><td>Feature Set</td><td>21 static metrics</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div class="dot" style="background:var(--success)"></div>Recent Delivery Sessions
+          </div>
+        </div>
+        <div id="recent-pipelines"><div class="empty-msg">No runs yet</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const cpuHistory = [], memHistory = [], MAX_HIST = 20;
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = String(str ?? '');
+  return d.innerHTML;
+}
+
+function getToken() {
+  const m = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+  return m ? m[1] : (localStorage.getItem('token') || '');
+}
+
+function authHeaders() {
+  const t = getToken();
+  return t ? { 'Authorization': 'Bearer ' + t } : {};
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function renderMiniChart(id, data, cls) {
+  const el = document.getElementById(id);
+  if (!el || !data.length) return;
+  const max = Math.max(...data, 1);
+  el.innerHTML = '';
+  data.forEach(v => {
+    const bar = document.createElement('div');
+    bar.className = `mini-bar ${cls}`;
+    bar.style.height = (v / max * 100).toFixed(1) + '%';
+    el.appendChild(bar);
+  });
+}
+
+function renderContainers(containers) {
+  const el = document.getElementById('containers-list');
+  if (!el) return;
+  if (!containers.length) { el.innerHTML = '<div class="empty-msg">No containers running right now</div>'; return; }
+  el.innerHTML = '';
+  containers.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'container-item';
+
+    const name = document.createElement('div');
+    name.className = 'item-name';
+    name.textContent = c.name || 'unknown';
+
+    const img = document.createElement('div');
+    img.className = 'item-sub';
+    img.textContent = c.image || '';
+
+    const pill = document.createElement('span');
+    const state = (c.state || 'stopped').toLowerCase();
+    pill.className = `status-pill ${state === 'running' ? 'running' : 'stopped'}`;
+    pill.textContent = state;
+
+    row.appendChild(name); row.appendChild(img); row.appendChild(pill);
+    el.appendChild(row);
+  });
+}
+
+function renderPods(pods) {
+  const el = document.getElementById('pods-list');
+  if (!el) return;
+  if (!pods.length) { el.innerHTML = '<div class="empty-msg">No workloads running right now</div>'; return; }
+  el.innerHTML = '';
+  pods.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'container-item';
+
+    const name = document.createElement('div');
+    name.className = 'item-name';
+    name.style.fontSize = '0.72rem';
+    name.textContent = p.name || 'unknown';
+
+    const ns = document.createElement('div');
+    ns.className = 'item-sub';
+    ns.textContent = p.namespace || '';
+
+    const status = (p.status || '').toLowerCase();
+    const pill = document.createElement('span');
+    pill.className = `status-pill ${status === 'running' ? 'running' : 'pending'}`;
+    pill.textContent = p.status || 'unknown';
+
+    row.appendChild(name); row.appendChild(ns); row.appendChild(pill);
+    el.appendChild(row);
+  });
+}
+
+function renderPipelines(runs) {
+  const el = document.getElementById('recent-pipelines');
+  if (!el) return;
+  if (!runs.length) { el.innerHTML = '<div class="empty-msg">No delivery sessions recorded yet</div>'; return; }
+  el.innerHTML = '';
+  runs.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'pipeline-mini';
+
+    const file = document.createElement('div');
+    file.className = 'file';
+    file.textContent = p.filename || 'unknown';
+
+    const prob = document.createElement('div');
+    prob.className = 'prob';
+    prob.style.color = (p.probability > 0.5) ? 'var(--danger)' : 'var(--success)';
+    prob.textContent = ((p.probability || 0) * 100).toFixed(1) + '%';
+
+    const status = (p.status || '').toLowerCase();
+    const pill = document.createElement('span');
+    pill.className = `status-pill ${status === 'success' ? 'running' : 'stopped'}`;
+    pill.textContent = p.status || 'unknown';
+
+    row.appendChild(file); row.appendChild(prob); row.appendChild(pill);
+    el.appendChild(row);
+  });
+}
+
+async function poll() {
+  try {
+    const res = await fetch('/api/system-status', { headers: authHeaders() });
+    if (res.status === 401) { window.location.href = '/'; return; }
+    if (!res.ok) return;
+    const d = await res.json();
+
+    setText('cpu-val', d.cpu_percent.toFixed(1) + '%');
+    setText('cpu-sub', 'Host compute utilization');
+    document.getElementById('cpu-bar').style.width = d.cpu_percent + '%';
+
+    setText('mem-val', d.memory.percent.toFixed(1) + '%');
+    setText('mem-sub', `${d.memory.used_gb} / ${d.memory.total_gb} GB`);
+    document.getElementById('mem-bar').style.width = d.memory.percent + '%';
+
+    setText('disk-val', d.disk.percent.toFixed(1) + '%');
+    setText('disk-sub', `${d.disk.used_gb} / ${d.disk.total_gb} GB`);
+    document.getElementById('disk-bar').style.width = d.disk.percent + '%';
+
+    setText('net-sent', d.network.bytes_sent_mb.toFixed(1));
+    setText('net-recv', d.network.bytes_recv_mb.toFixed(1));
+    setText('pipeline-count', d.pipeline_runs || 0);
+
+    cpuHistory.push(d.cpu_percent); if (cpuHistory.length > MAX_HIST) cpuHistory.shift();
+    memHistory.push(d.memory.percent); if (memHistory.length > MAX_HIST) memHistory.shift();
+    renderMiniChart('cpu-chart', cpuHistory, 'cpu');
+    renderMiniChart('mem-chart', memHistory, 'mem');
+
+    setText('container-count', (d.containers || []).length);
+    setText('docker-note', d.docker?.message || (d.containers?.length ? 'Container runtime reachable.' : 'No active containers.'));
+    renderContainers(d.containers || []);
+
+    setText('pods-count', (d.pods || []).length);
+    setText('k8s-note', d.k8s?.message || (d.pods?.length ? 'Cluster API reachable.' : 'No active workloads.'));
+    renderPods(d.pods || []);
+
+    const m = d.model || {};
+    setText('model-auc', m.auc_roc ? m.auc_roc.toFixed(4) : '—');
+    setText('model-f1', m.f1_at_threshold ? m.f1_at_threshold.toFixed(4) : '—');
+    setText('model-ntrain', m.n_train ? m.n_train.toLocaleString() : '—');
+    setText('m-arch', m.architecture || '—');
+    setText('m-selected', m.selected_model || '—');
+    setText('m-threshold', m.decision_threshold != null ? m.decision_threshold.toFixed(2) : '—');
+    setText('m-smote', m.smote_applied ? 'Yes' : 'No');
+
+    const badge = document.getElementById('model-status-badge');
+    if (badge) badge.textContent = m.loaded ? '● loaded' : '✗ not loaded';
+
+    renderPipelines(d.recent_pipelines || []);
+
+  } catch(e) {
+    console.error('[DefectSense] Poll error:', e);
+  }
+}
+
+poll();
+setInterval(poll, 3000);
+</script>
+</body>
+</html>

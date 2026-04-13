@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DefectSense — AI Code Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030712;
+  --surface: rgba(255,255,255,0.03);
+  --surface2: rgba(255,255,255,0.05);
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --accent: #6366f1;
+  --accent-dim: rgba(99,102,241,0.15);
+  --accent2: #22d3ee;
+  --accent2-dim: rgba(34,211,238,0.12);
+  --danger: #ef4444;
+  --danger-dim: rgba(239,68,68,0.12);
+  --warn: #f59e0b;
+  --warn-dim: rgba(245,158,11,0.12);
+  --success: #10b981;
+  --success-dim: rgba(16,185,129,0.12);
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+  --text-dim: #1e293b;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Space Grotesk', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* Background */
+.bg-base {
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 100% 60% at 0% 0%, rgba(99,102,241,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(34,211,238,0.06) 0%, transparent 50%);
+}
+.grid-bg {
+  position: fixed; inset: 0; z-index: 0;
+  background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Layout */
+.layout { position: relative; z-index: 1; display: flex; min-height: 100vh; }
+.sidebar {
+  width: 260px; flex-shrink: 0;
+  background: rgba(2,6,12,0.8);
+  border-right: 1px solid var(--border);
+  padding: 1.5rem 0;
+  backdrop-filter: blur(20px);
+  position: sticky; top: 0; height: 100vh;
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+.sidebar-logo {
+  padding: 0 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+.sidebar-logo .name {
+  font-size: 1.125rem; font-weight: 700; letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #fff, rgba(255,255,255,0.6));
+  background-clip: text;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.sidebar-logo .tagline { font-size: 0.7rem; font-family: var(--mono); color: var(--text-muted); margin-top: 2px; }
+.logo-icon { display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 10px; font-size: 1rem; margin-bottom: 0.5rem;
+  box-shadow: 0 0 20px rgba(99,102,241,0.3); }
+.nav-section { padding: 0 0.75rem; margin-bottom: 0.5rem; }
+.nav-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-muted); padding: 0.5rem 0.5rem 0.25rem; font-weight: 600; }
+.nav-item {
+  display: flex; align-items: center; gap: 0.625rem;
+  padding: 0.6rem 0.75rem; border-radius: 8px; cursor: pointer;
+  font-size: 0.875rem; font-weight: 500; color: var(--text-muted);
+  transition: all 0.15s; border: 1px solid transparent;
+  text-decoration: none;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--accent-dim); color: var(--accent); border-color: rgba(99,102,241,0.2); }
+.nav-item .icon { font-size: 0.9rem; width: 18px; text-align: center; }
+.nav-badge {
+  margin-left: auto; font-size: 0.65rem; font-family: var(--mono);
+  background: var(--accent-dim); color: var(--accent);
+  padding: 1px 6px; border-radius: 4px;
+}
+.sidebar-bottom { margin-top: auto; padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
+.user-chip {
+  display: flex; align-items: center; gap: 0.625rem;
+  padding: 0.5rem; border-radius: 8px; background: var(--surface);
+}
+.user-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 700; color: white; flex-shrink: 0;
+}
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 0.8125rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role { font-size: 0.65rem; color: var(--text-muted); font-family: var(--mono); }
+.logout-btn { font-size: 0.75rem; color: var(--text-muted); cursor: pointer; padding: 2px; }
+.logout-btn:hover { color: var(--danger); }
+
+/* Main content */
+.main { flex: 1; padding: 2rem; min-width: 0; }
+.page { display: none; }
+.page.active { display: block; }
+.page-header { margin-bottom: 2rem; }
+.page-header h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+.page-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem; }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+.card-title {
+  font-size: 0.8125rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.card-title .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+/* Upload zone */
+.upload-zone {
+  border: 2px dashed var(--border2);
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative; overflow: hidden;
+  background: var(--surface);
+}
+.upload-zone::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 60% 60% at 50% 50%, var(--accent-dim), transparent);
+  opacity: 0; transition: opacity 0.3s;
+}
+.upload-zone:hover::before, .upload-zone.drag-over::before { opacity: 1; }
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--accent); background: rgba(99,102,241,0.03);
+}
+.upload-icon {
+  width: 64px; height: 64px; margin: 0 auto 1rem;
+  background: var(--accent-dim); border-radius: 16px;
+  display: flex; align-items: center; justify-content: center; font-size: 1.75rem;
+  border: 1px solid rgba(99,102,241,0.2);
+}
+.upload-title { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; }
+.upload-sub { color: var(--text-muted); font-size: 0.875rem; }
+.upload-hint { margin-top: 1rem; font-size: 0.75rem; font-family: var(--mono);
+  color: var(--text-muted); background: rgba(0,0,0,0.3); display: inline-block;
+  padding: 0.25rem 0.75rem; border-radius: 20px; }
+input[type=file] { display: none; }
+
+/* Loading bar */
+.loading-overlay {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+  align-items: center; justify-content: center; flex-direction: column; gap: 1rem;
+}
+.loading-overlay.show { display: flex; }
+.loading-bar-wrap { width: 300px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.loading-bar { height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 4px; width: 0%; transition: width 0.3s; animation: indeterminate 1.5s ease infinite; }
+@keyframes indeterminate { 0%{width:0%;margin-left:0%} 50%{width:60%;margin-left:20%} 100%{width:0%;margin-left:100%} }
+.loading-text { font-size: 0.875rem; color: var(--text-muted); font-family: var(--mono); }
+
+/* Result grid */
+.results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.result-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem;
+  animation: fadeSlideUp 0.4s ease forwards; opacity: 0;
+}
+@keyframes fadeSlideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.result-card:nth-child(1){animation-delay:0.0s}
+.result-card:nth-child(2){animation-delay:0.1s}
+.result-card:nth-child(3){animation-delay:0.2s}
+.result-card:nth-child(4){animation-delay:0.3s}
+.result-card:nth-child(5){animation-delay:0.4s}
+.result-card.full-width { grid-column: 1 / -1; }
+
+/* Score display */
+.score-display { text-align: center; padding: 1.5rem 0; }
+.score-value { font-size: 4rem; font-weight: 700; line-height: 1; font-family: var(--mono); }
+.score-value.danger { color: var(--danger); text-shadow: 0 0 40px rgba(239,68,68,0.4); }
+.score-value.warn { color: var(--warn); text-shadow: 0 0 40px rgba(245,158,11,0.4); }
+.score-value.success { color: var(--success); text-shadow: 0 0 40px rgba(16,185,129,0.4); }
+.score-label { margin-top: 0.5rem; font-size: 1rem; font-weight: 600; }
+.score-label.danger { color: var(--danger); }
+.score-label.warn { color: var(--warn); }
+.score-label.success { color: var(--success); }
+
+/* Metric rows */
+.metric-row { display: flex; justify-content: space-between; align-items: center;
+  padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+.metric-row:last-child { border-bottom: none; }
+.metric-name { font-size: 0.8125rem; color: var(--text-muted); }
+.metric-val { font-family: var(--mono); font-size: 0.875rem; font-weight: 500; color: var(--accent2); }
+
+/* SHAP bars */
+.shap-row { margin-bottom: 0.75rem; }
+.shap-label { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 0.25rem; }
+.shap-label .name { color: var(--text-muted); font-family: var(--mono); }
+.shap-label .val { color: var(--text); }
+.shap-track { height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+.shap-fill { height: 100%; border-radius: 3px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+.shap-fill.pos { background: linear-gradient(90deg, var(--danger), rgba(239,68,68,0.4)); }
+.shap-fill.neg { background: linear-gradient(90deg, var(--success), rgba(16,185,129,0.4)); }
+
+/* Chat */
+.chat-messages {
+  height: 280px; overflow-y: auto; padding: 1rem;
+  background: rgba(0,0,0,0.3); border-radius: 10px; margin-bottom: 1rem;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.chat-msg { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.chat-msg .sender { font-size: 0.7rem; font-family: var(--mono); font-weight: 600; }
+.chat-msg.ai .sender { color: var(--accent2); }
+.chat-msg.user .sender { color: var(--accent); text-align: right; }
+.chat-msg .bubble {
+  padding: 0.625rem 0.875rem; border-radius: 10px; font-size: 0.875rem; line-height: 1.6;
+  max-width: 90%;
+}
+.chat-msg.ai .bubble { background: var(--surface2); border: 1px solid var(--border); }
+.chat-msg.user .bubble { background: var(--accent-dim); border: 1px solid rgba(99,102,241,0.2); align-self: flex-end; }
+.chat-msg.ai .bubble strong { color: var(--accent2); font-weight: 600; }
+.chat-input-row { display: flex; gap: 0.5rem; }
+.chat-input {
+  flex: 1; padding: 0.75rem 1rem;
+  background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text); font-family: var(--sans); font-size: 0.875rem;
+  outline: none; transition: border-color 0.2s;
+}
+.chat-input:focus { border-color: var(--accent); }
+.chat-send {
+  padding: 0.75rem 1.25rem; background: var(--accent); border: none; border-radius: 10px;
+  color: white; font-family: var(--sans); font-weight: 600; cursor: pointer; font-size: 0.875rem;
+  transition: all 0.2s; white-space: nowrap;
+}
+.chat-send:hover { background: #4f46e5; }
+.chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+.cursor { display: inline-block; width: 2px; height: 14px; background: var(--accent2); animation: blink 1s infinite; vertical-align: middle; margin-left: 2px; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* RAG badge */
+.rag-badge {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 0.65rem;
+  font-family: var(--mono); background: var(--accent2-dim); color: var(--accent2);
+  padding: 2px 8px; border-radius: 4px; margin-bottom: 0.5rem;
+}
+
+/* Pipeline */
+.pipeline-stages { display: flex; flex-direction: column; gap: 0.5rem; }
+.pipeline-stage {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border-radius: 10px;
+  border: 1px solid var(--border); transition: all 0.3s;
+}
+.pipeline-stage.running { border-color: var(--accent); background: var(--accent-dim); }
+.pipeline-stage.pass { border-color: rgba(16,185,129,0.3); background: var(--success-dim); }
+.pipeline-stage.warning { border-color: rgba(245,158,11,0.3); background: var(--warn-dim); }
+.pipeline-stage.blocked { border-color: rgba(239,68,68,0.3); background: var(--danger-dim); }
+.stage-icon { font-size: 1.1rem; width: 24px; text-align: center; }
+.stage-info { flex: 1; }
+.stage-name { font-size: 0.875rem; font-weight: 600; }
+.stage-tool { font-size: 0.7rem; font-family: var(--mono); color: var(--text-muted); }
+.stage-status { font-size: 0.75rem; font-family: var(--mono); }
+.stage-status.running { color: var(--accent); }
+.stage-status.pass { color: var(--success); }
+.stage-status.warning { color: var(--warn); }
+.stage-status.blocked { color: var(--danger); }
+.stage-progress { margin-top: 4px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 1px; overflow: hidden; }
+.stage-progress-fill { height: 100%; background: var(--accent); transition: width 0.2s; }
+.pipeline-run-btn {
+  width: 100%; padding: 0.875rem; background: linear-gradient(135deg, #059669, #0d9488);
+  border: none; border-radius: 10px; color: white; font-family: var(--sans);
+  font-size: 0.9375rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  margin-bottom: 1rem;
+}
+.pipeline-run-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(5,150,105,0.3); }
+.pipeline-run-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* File summary */
+.summary-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+.summary-chip {
+  font-size: 0.75rem; font-family: var(--mono);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.25rem 0.625rem; color: var(--text-muted);
+}
+.summary-chip.highlight { background: var(--accent-dim); color: var(--accent); border-color: rgba(99,102,241,0.2); }
+
+/* Risk factors */
+.risk-item { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem;
+  background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid; }
+.risk-item.high { border-color: var(--danger); }
+.risk-item.medium { border-color: var(--warn); }
+.risk-item.low { border-color: var(--accent); }
+.risk-badge { font-size: 0.65rem; font-family: var(--mono); font-weight: 700;
+  padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 1px; }
+.risk-badge.high { background: var(--danger-dim); color: #fca5a5; }
+.risk-badge.medium { background: var(--warn-dim); color: #fde68a; }
+.risk-badge.low { background: var(--accent-dim); color: #a5b4fc; }
+.risk-text { font-size: 0.8125rem; }
+.risk-factor { font-weight: 600; color: var(--text); }
+.risk-msg { color: var(--text-muted); font-size: 0.75rem; margin-top: 2px; }
+
+/* Code viewer */
+.code-viewer {
+  font-family: var(--mono); font-size: 0.75rem; line-height: 1.6;
+  background: rgba(0,0,0,0.5); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1rem; overflow: auto; max-height: 300px;
+  color: #a8d8a8; white-space: pre;
+}
+
+/* Tabs */
+.tab-bar { display: flex; gap: 4px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 10px; margin-bottom: 1.5rem; }
+.tab-btn {
+  padding: 0.5rem 1rem; border: none; border-radius: 7px; background: none;
+  color: var(--text-muted); font-family: var(--sans); font-size: 0.8125rem; font-weight: 500;
+  cursor: pointer; transition: all 0.2s;
+}
+.tab-btn.active { background: var(--surface2); color: var(--text); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+.empty-state .icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+.empty-state p { font-size: 0.875rem; }
+
+/* Notification */
+.notif {
+  position: fixed; top: 1.5rem; right: 1.5rem; z-index: 200;
+  padding: 0.875rem 1.25rem; border-radius: 12px; font-size: 0.875rem;
+  font-weight: 500; backdrop-filter: blur(20px); transform: translateX(120%);
+  transition: transform 0.3s; max-width: 300px;
+}
+.notif.show { transform: translateX(0); }
+.notif.success { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+.notif.error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+.notif.info { background: var(--accent-dim); border: 1px solid rgba(99,102,241,0.3); color: #a5b4fc; }
+
+/* History table */
+.history-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+.history-table th { padding: 0.5rem 0.75rem; text-align: left; color: var(--text-muted); font-weight: 600;
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+.history-table td { padding: 0.625rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.history-table tr:hover td { background: var(--surface2); }
+.status-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; font-family: var(--mono);
+  padding: 2px 8px; border-radius: 20px; }
+.status-pill.pass { background: var(--success-dim); color: #6ee7b7; }
+.status-pill.blocked { background: var(--danger-dim); color: #fca5a5; }
+.status-pill.success { background: var(--success-dim); color: #6ee7b7; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main { padding: 1rem; }
+}
+</style>
+</head>
+<body>
+<div class="bg-base"></div>
+<div class="grid-bg"></div>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+  <div class="loading-text" id="loading-text">Analyzing code...</div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⬡</div>
+      <div class="name">DefectSense</div>
+      <div class="tagline">// MLOps v2.0</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Analysis</div>
+      <div class="nav-item active" onclick="showPage('predict')" id="nav-predict">
+        <span class="icon">⬡</span> Code Risk Review
+      </div>
+      <div class="nav-item" onclick="showPage('rag')" id="nav-rag">
+        <span class="icon">◈</span> Context Lens
+        <span class="nav-badge">49</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">DevOps</div>
+      <div class="nav-item" onclick="showPage('pipeline')" id="nav-pipeline">
+        <span class="icon">⚙</span> CI/CD Pipeline
+      </div>
+      <a class="nav-item" href="/dashboard">
+        <span class="icon">◎</span> Live Dashboard
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">History</div>
+      <div class="nav-item" onclick="showPage('history')" id="nav-history">
+        <span class="icon">≡</span> Pipeline Runs
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-info">
+          <div class="user-name" id="user-name">Loading...</div>
+          <div class="user-role" id="user-role">analyst</div>
+        </div>
+        <div class="logout-btn" onclick="logout()" title="Logout">✕</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- ===== PREDICT PAGE ===== -->
+    <div class="page active" id="page-predict">
+      <div class="page-header">
+        <h2>Code Risk Review</h2>
+        <p>Upload a Python file for model-guided static diagnostics driven by a stacked ensemble</p>
+      </div>
+
+      <div id="upload-section">
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()"
+             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <div class="upload-icon">🐍</div>
+          <div class="upload-title">Drop your Python file here</div>
+          <div class="upload-sub">or click to browse — .py files only</div>
+          <div class="upload-hint">Powered by radon static analysis + Stacking ML ensemble</div>
+        </div>
+        <input type="file" id="file-input" accept=".py" onchange="handleFileSelect(event)">
+      </div>
+
+      <div id="results-section" style="display:none; margin-top:1.5rem;">
+        <!-- Top row: summary + score -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+          <div class="result-card">
+            <div class="card-title"><span class="dot"></span> Code Snapshot</div>
+            <div id="file-summary-content">—</div>
+          </div>
+          <div class="result-card">
+            <div class="card-title"><span class="dot" style="background:var(--danger)"></span> Risk Score</div>
+            <div class="score-display">
+              <div class="score-value" id="score-value">—</div>
+              <div class="score-label" id="score-label">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Second row: metrics + SHAP -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+          <div class="result-card">
+            <div class="card-title"><span class="dot" style="background:var(--accent2)"></span> Static Signals</div>
+            <div id="metrics-content">—</div>
+          </div>
+          <div class="result-card">
+            <div class="card-title"><span class="dot" style="background:var(--warn)"></span> Feature Influence — Leading Signals</div>
+            <div id="shap-content">—</div>
+          </div>
+        </div>
+
+        <!-- Risk factors full width -->
+        <div class="result-card" style="margin-bottom:1rem;">
+          <div class="card-title"><span class="dot" style="background:var(--danger)"></span> Priority Risk Notes</div>
+          <div id="risks-content">—</div>
+        </div>
+
+        <!-- AI Chat + Code viewer -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+          <div class="result-card">
+            <div class="card-title"><span class="dot" style="background:var(--accent2)"></span> DefectSense AI — Context Chat</div>
+            <div class="rag-badge">⬡ Local software engineering KB</div>
+            <div class="chat-messages" id="chat-messages">
+              <div class="chat-msg ai">
+                <div class="sender">DefectSense AI</div>
+                <div class="bubble">File analyzed successfully. I can answer questions about <strong>risk factors</strong>, <strong>what to fix</strong>, <strong>how the model works</strong>, or <strong>metric meanings</strong>. What would you like to know?</div>
+              </div>
+            </div>
+            <div class="chat-input-row">
+              <input class="chat-input" id="chat-input" type="text"
+                     placeholder="Why is this risky? What should I fix?" maxlength="200"
+                     onkeydown="if(event.key==='Enter')sendChat()">
+              <button class="chat-send" id="chat-send" onclick="sendChat()">Ask →</button>
+            </div>
+          </div>
+          <div class="result-card">
+            <div class="card-title"><span class="dot"></span> Source Preview</div>
+            <div class="code-viewer" id="code-viewer">// Upload a .py file to see source</div>
+          </div>
+        </div>
+
+        <!-- New analysis button -->
+        <button onclick="resetAnalysis()" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.75rem 1.5rem;color:var(--text-muted);font-family:var(--sans);cursor:pointer;font-size:0.875rem;transition:all 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-muted)'">
+          ← Analyze Another File
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== CONTEXT PAGE ===== -->
+    <div class="page" id="page-rag">
+      <div class="page-header">
+        <h2>Context Knowledge Studio</h2>
+        <p>Query-ready engineering playbook for maintainability, risk reduction, and deployment discipline</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="card">
+          <div class="card-title"><span class="dot"></span> Insight Search</div>
+          <div class="form-group" style="margin-bottom:1rem;">
+            <input class="chat-input" id="rag-query" type="text" placeholder="e.g. how to reduce cyclomatic complexity safely"
+                   style="width:100%;margin-bottom:0.5rem;" onkeydown="if(event.key==='Enter')ragSearch()">
+            <button onclick="ragSearch()" style="width:100%;padding:0.75rem;background:var(--accent);border:none;border-radius:10px;color:white;font-family:var(--sans);font-weight:600;cursor:pointer;">
+              Find Insights →
+            </button>
+          </div>
+          <div id="rag-results" style="margin-top:1rem;">
+            <div class="empty-state"><div class="icon">◈</div><p>Type a question to retrieve project-ready guidance</p></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--accent2)"></span> Knowledge Atlas</div>
+          <div style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:1rem;">
+            49 local guidance notes indexed with lightweight token similarity
+          </div>
+          <div id="kb-list">
+            <div class="metric-row"><span class="metric-name">Control-Flow Risk</span><span class="metric-val">2 notes</span></div>
+            <div class="metric-row"><span class="metric-name">Cognitive Load Signals</span><span class="metric-val">3 notes</span></div>
+            <div class="metric-row"><span class="metric-name">Module Size Heuristics</span><span class="metric-val">1 note</span></div>
+            <div class="metric-row"><span class="metric-name">Branching Hotspots</span><span class="metric-val">1 note</span></div>
+            <div class="metric-row"><span class="metric-name">Operator Density</span><span class="metric-val">1 note</span></div>
+            <div class="metric-row"><span class="metric-name">Comment Quality</span><span class="metric-val">1 note</span></div>
+            <div class="metric-row"><span class="metric-name">Model Diagnostics</span><span class="metric-val">2 notes</span></div>
+            <div class="metric-row"><span class="metric-name">Refactor Tactics</span><span class="metric-val">2 notes</span></div>
+            <div class="metric-row"><span class="metric-name">Interpretability Signals</span><span class="metric-val">1 note</span></div>
+            <div class="metric-row" style="border:none;"><span class="metric-name" style="color:var(--accent2);">Total</span><span class="metric-val" style="color:var(--accent2);">49 notes</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PIPELINE PAGE ===== -->
+    <div class="page" id="page-pipeline">
+      <div class="page-header">
+        <h2>CI/CD Pipeline</h2>
+        <p>Isolated local CI/CD pipeline with ML defect gating — blocks deployment if defect probability &gt; 70%</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--success)"></span> Pipeline Runner</div>
+          <button class="pipeline-run-btn" id="pipeline-btn" onclick="runPipeline()">
+            ▶ Run CI/CD Pipeline
+          </button>
+          <div class="pipeline-stages" id="pipeline-stages">
+            <div style="text-align:center;color:var(--text-muted);font-size:0.875rem;padding:2rem 0;">
+              Upload and analyze a file first, then run the pipeline
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--accent2)"></span> Pipeline Output</div>
+          <div id="pipeline-output" style="font-family:var(--mono);font-size:0.75rem;line-height:1.8;color:var(--text-muted);background:rgba(0,0,0,0.4);border-radius:10px;padding:1rem;min-height:200px;max-height:400px;overflow-y:auto;">
+            <span style="color:var(--text-dim);">Waiting for pipeline run...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== HISTORY PAGE ===== -->
+    <div class="page" id="page-history">
+      <div class="page-header">
+        <h2>Pipeline History</h2>
+        <p>Recent CI/CD pipeline runs and their outcomes</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Recent Runs</div>
+        <div id="history-content">
+          <div class="empty-state"><div class="icon">≡</div><p>No pipeline runs yet. Run the CI/CD pipeline after uploading a file.</p></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const API = { user: null };
+let currentPrediction = null;
+
+// Auth setup
+async function initAuth() {
+  // Remove stale token keys from older frontend versions.
+  localStorage.removeItem('ds_token');
+  localStorage.removeItem('token');
+  sessionStorage.removeItem('token');
+
+  try {
+    const verifyRes = await fetch('/api/auth/verify');
+    if (!verifyRes.ok) {
+      window.location.href = '/';
+      return;
+    }
+
+    const verifyData = await verifyRes.json();
+    const storedUser = localStorage.getItem('ds_user') || sessionStorage.getItem('ds_user');
+    const profile = storedUser ? JSON.parse(storedUser) : {};
+    API.user = {
+      username: verifyData?.user?.sub || profile.username || 'user',
+      role: verifyData?.user?.role || profile.role || 'analyst',
+      name: profile.name || verifyData?.user?.sub || 'User',
+    };
+
+    const name = API.user.name || API.user.username;
+    document.getElementById('user-name').textContent = name;
+    document.getElementById('user-role').textContent = API.user.role || 'analyst';
+    document.getElementById('user-avatar').textContent = name[0].toUpperCase();
+  } catch (e) {
+    window.location.href = '/';
+  }
+}
+
+function logout() {
+  fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+  localStorage.removeItem('ds_token');
+  localStorage.removeItem('token');
+  localStorage.removeItem('ds_user');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('ds_user');
+  window.location.href = '/';
+}
+
+function authHeaders() {
+  return {};
+}
+
+// Navigation
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const navEl = document.getElementById('nav-' + name);
+  if (navEl) navEl.classList.add('active');
+  if (name === 'history') loadHistory();
+}
+
+// Drag and drop
+function handleDragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag-over'); }
+function handleDragLeave(e) { document.getElementById('upload-zone').classList.remove('drag-over'); }
+function handleDrop(e) { e.preventDefault(); handleDragLeave(e); const f = e.dataTransfer.files[0]; if (f) uploadFile(f); }
+function handleFileSelect(e) { const f = e.target.files[0]; if (f) uploadFile(f); }
+
+function showLoading(text) {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading-overlay').classList.add('show');
+}
+function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
+
+function notify(msg, type='info') {
+  const el = document.getElementById('notif');
+  el.textContent = msg; el.className = `notif ${type} show`;
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+async function uploadFile(file) {
+  if (!file.name.endsWith('.py')) { notify('Only .py files supported', 'error'); return; }
+  showLoading('Extracting 21 code metrics with radon analysis...');
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const res = await fetch('/api/predict', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: fd
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (res.status === 401) {
+        notify('Authentication required. Please sign in.', 'error');
+        setTimeout(() => logout(), 800);
+        return;
+      }
+      if (res.status === 503) {
+        const hint = data.hint ? ` (${data.hint})` : '';
+        notify((data.error || 'Model is not ready') + hint, 'error');
+        return;
+      }
+      notify(data.error || 'Analysis failed', 'error');
+      return;
+    }
+    currentPrediction = data;
+    showResults(data);
+    notify(`Analysis complete: ${mapRiskLabel(data.label, data.probability)}`, data.label === 'Clean' ? 'success' : 'error');
+    document.getElementById('pipeline-btn').disabled = false;
+  } catch(e) {
+    notify('Request failed — is the server running?', 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+function showResults(data) {
+  document.getElementById('upload-section').style.display = 'none';
+  document.getElementById('results-section').style.display = 'block';
+
+  const displayLabel = mapRiskLabel(data.label, data.probability);
+
+  // File summary
+  const s = data.summary;
+  const funcs = (s.functions || []).slice(0,4);
+  document.getElementById('file-summary-content').innerHTML = `
+    <div style="font-family:var(--mono);font-size:0.8rem;color:var(--success);margin-bottom:0.5rem;">${data.filename}</div>
+    <div class="summary-row">
+      <span class="summary-chip highlight">${(s.functions||[]).length} functions</span>
+      <span class="summary-chip highlight">${(s.classes||[]).length} classes</span>
+      <span class="summary-chip">${s.total_lines||0} lines</span>
+      ${s.async_functions ? `<span class="summary-chip">⚡ ${s.async_functions} async</span>` : ''}
+      ${s.decorators ? `<span class="summary-chip">@${s.decorators} decorators</span>` : ''}
+    </div>
+    ${funcs.length ? `<div style="margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted);font-family:var(--mono);">${funcs.map(f=>`<span style="color:var(--accent2);">def</span> ${f}()`).join(' &nbsp; ')}</div>` : ''}
+    ${(s.imports||[]).length ? `<div style="margin-top:0.5rem;font-size:0.7rem;color:var(--text-dim);font-family:var(--mono);">imports: ${(s.imports||[]).slice(0,5).join(', ')}</div>` : ''}
+    ${s.error ? `<div style="color:var(--warn);font-size:0.75rem;margin-top:0.5rem;">⚠ ${s.error}</div>` : ''}
+  `;
+
+  // Score
+  const prob = data.probability;
+  const pct = (prob * 100).toFixed(1);
+  let cls = prob >= 0.7 ? 'danger' : prob >= 0.4 ? 'warn' : 'success';
+  document.getElementById('score-value').className = `score-value ${cls}`;
+  document.getElementById('score-value').textContent = pct + '%';
+  document.getElementById('score-label').className = `score-label ${cls}`;
+  document.getElementById('score-label').textContent = displayLabel;
+
+  // Metrics
+  const km = data.key_metrics;
+  document.getElementById('metrics-content').innerHTML = Object.entries(km).map(([k,v]) => `
+    <div class="metric-row">
+      <span class="metric-name">${k}</span>
+      <span class="metric-val">${typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(3)) : v}</span>
+    </div>
+  `).join('');
+
+  // SHAP
+  const topFeats = data.top_features || [];
+  const maxShap = Math.max(...topFeats.map(f => Math.abs(f[1])), 0.01);
+  document.getElementById('shap-content').innerHTML = topFeats.map(([name, val]) => {
+    const pct2 = (Math.abs(val) / maxShap * 100).toFixed(1);
+    const pos = val > 0;
+    return `<div class="shap-row">
+      <div class="shap-label">
+        <span class="name">${name}</span>
+        <span class="val">${val > 0 ? '+' : ''}${val.toFixed(4)}</span>
+      </div>
+      <div class="shap-track"><div class="shap-fill ${pos ? 'pos' : 'neg'}" style="width:${pct2}%"></div></div>
+    </div>`;
+  }).join('') || '<div style="color:var(--text-muted);font-size:0.875rem;">No SHAP data available</div>';
+
+  // Risks
+  const risks = data.risks || [];
+  document.getElementById('risks-content').innerHTML = risks.length
+    ? risks.map(r => `<div class="risk-item ${r.severity}">
+        <span class="risk-badge ${r.severity}">${r.severity.toUpperCase()}</span>
+        <div class="risk-text">
+          <div class="risk-factor">${r.factor}: ${typeof r.value === 'number' ? r.value.toFixed(2) : r.value}</div>
+          <div class="risk-msg">${r.message}</div>
+        </div>
+      </div>`).join('')
+    : '<div style="color:var(--success);font-size:0.875rem;padding:0.5rem;">✓ No significant risk factors detected</div>';
+
+  // Init pipeline stages display
+  initPipelineStages();
+}
+
+function mapRiskLabel(label, probability) {
+  if (probability >= 0.7) {
+    return 'High-Risk';
+  }
+  if (probability >= 0.4) {
+    return 'Medium-Risk';
+  }
+  return 'Low-Risk';
+}
+
+function resetAnalysis() {
+  document.getElementById('upload-section').style.display = 'block';
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('file-input').value = '';
+  currentPrediction = null;
+  document.getElementById('chat-messages').innerHTML = `
+    <div class="chat-msg ai">
+      <div class="sender">DefectSense AI</div>
+      <div class="bubble">File analyzed successfully. I can answer questions about <strong>risk factors</strong>, <strong>what to fix</strong>, <strong>how the model works</strong>, or <strong>metric meanings</strong>. What would you like to know?</div>
+    </div>`;
+}
+
+// Chat
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const question = input.value.trim();
+  if (!question) return;
+  if (!currentPrediction) { notify('Please analyze a file first', 'error'); return; }
+
+  const msgs = document.getElementById('chat-messages');
+  // Add user message
+  msgs.innerHTML += `<div class="chat-msg user"><div class="sender">You</div><div class="bubble">${escHtml(question)}</div></div>`;
+  input.value = '';
+  document.getElementById('chat-send').disabled = true;
+
+  // AI message placeholder
+  const aiMsgId = 'ai-msg-' + Date.now();
+  msgs.innerHTML += `<div class="chat-msg ai" id="${aiMsgId}">
+    <div class="sender">DefectSense AI <span style="font-size:0.6rem;color:var(--text-dim);">CTX</span></div>
+    <div class="bubble" id="${aiMsgId}-text"><span class="cursor"></span></div>
+  </div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+
+  const bubbleEl = document.getElementById(aiMsgId + '-text');
+  let fullText = '';
+  let sawChunk = false;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question })
+    });
+
+    if (!res.ok || !res.body) {
+      let msg = 'Chat request failed';
+      try {
+        const err = await res.json();
+        msg = err.error || msg;
+      } catch (e) {}
+      bubbleEl.innerHTML = `<span style="color:var(--danger)">${escHtml(msg)}</span>`;
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const chunk = JSON.parse(line.slice(6));
+          if (chunk.error) {
+            bubbleEl.innerHTML = `<span style="color:var(--danger)">${escHtml(chunk.error)}</span>`;
+            return;
+          }
+          if (chunk.text) {
+            sawChunk = true;
+            fullText += chunk.text;
+            // Render markdown-like bold
+            bubbleEl.innerHTML = fullText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') + '<span class="cursor"></span>';
+            msgs.scrollTop = msgs.scrollHeight;
+          }
+          if (chunk.done) {
+            bubbleEl.innerHTML = fullText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            sawChunk = true;
+          }
+        } catch(e) {}
+      }
+    }
+
+    if (!sawChunk) {
+      bubbleEl.innerHTML = '<span style="color:var(--warn)">No response from RAG service. Please try again.</span>';
+    } else {
+      bubbleEl.innerHTML = fullText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    }
+  } catch(e) {
+    bubbleEl.innerHTML = '<span style="color:var(--danger)">Error generating response</span>';
+  }
+
+  document.getElementById('chat-send').disabled = false;
+}
+
+// RAG Search
+async function ragSearch() {
+  const q = document.getElementById('rag-query').value.trim();
+  if (!q) return;
+  const el = document.getElementById('rag-results');
+  el.innerHTML = '<div style="color:var(--text-muted);font-size:0.875rem;text-align:center;padding:1rem;">Scanning the knowledge atlas...</div>';
+
+  try {
+    const res = await fetch('/api/rag-search', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: q })
+    });
+    const data = await res.json();
+    if (data.context) {
+      const chunks = data.context.split('\n\n').filter(Boolean);
+      el.innerHTML = chunks.map((c, i) => `
+        <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:0.875rem;margin-bottom:0.5rem;">
+          <div style="font-size:0.65rem;font-family:var(--mono);color:var(--accent2);margin-bottom:0.5rem;">INSIGHT ${i+1} — ranked match</div>
+          <div style="font-size:0.8125rem;line-height:1.6;color:var(--text);">${escHtml(c)}</div>
+        </div>
+      `).join('');
+    }
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--danger);font-size:0.875rem;">${e.message}</div>`;
+  }
+}
+
+// Pipeline
+function initPipelineStages() {
+  const stages = [
+    {id:'lint', name:'Syntax Check', tool:'python -m py_compile', icon:'🔍'},
+    {id:'unit_test', name:'Unit Tests', tool:'python -m unittest discover -v', icon:'🧪'},
+    {id:'defect_scan', name:'ML Defect Scan', tool:'DefectSense Engine', icon:'🤖'},
+    {id:'security', name:'Security Audit', tool:'bandit + safety', icon:'🔒'},
+    {id:'build', name:'Docker Build', tool:'docker build', icon:'🐳'},
+    {id:'k8s_deploy', name:'K8s Deploy', tool:'kubectl apply', icon:'☸️'},
+  ];
+  document.getElementById('pipeline-stages').innerHTML = stages.map(s => `
+    <div class="pipeline-stage" id="stage-${s.id}">
+      <div class="stage-icon">${s.icon}</div>
+      <div class="stage-info">
+        <div class="stage-name">${s.name}</div>
+        <div class="stage-tool">${s.tool}</div>
+        <div class="stage-progress"><div class="stage-progress-fill" id="progress-${s.id}" style="width:0%"></div></div>
+      </div>
+      <div class="stage-status" id="status-${s.id}">⏸ waiting</div>
+    </div>
+  `).join('');
+}
+
+async function runPipeline() {
+  if (!currentPrediction) { notify('Analyze a file first', 'error'); return; }
+  const btn = document.getElementById('pipeline-btn');
+  btn.disabled = true; btn.textContent = '⏳ Running...';
+
+  const output = document.getElementById('pipeline-output');
+  output.innerHTML = '';
+
+  const addLog = (txt, color='var(--text-muted)') => {
+    const ts = new Date().toLocaleTimeString();
+    output.innerHTML += `<div><span style="color:var(--text-dim);">[${ts}]</span> <span style="color:${color};">${txt}</span></div>`;
+    output.scrollTop = output.scrollHeight;
+  };
+
+  addLog('Starting CI/CD pipeline...', 'var(--accent)');
+
+  try {
+    const res = await fetch('/api/pipeline', {
+      method: 'POST',
+      headers: authHeaders()
+    });
+    if (!res.ok || !res.body) {
+      let msg = 'Pipeline request failed';
+      try {
+        const err = await res.json();
+        msg = err.error || msg;
+      } catch (e) {}
+      addLog(msg, 'var(--danger)');
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const d = JSON.parse(line.slice(6));
+          handlePipelineEvent(d, addLog);
+        } catch(e) {}
+      }
+    }
+  } catch(e) {
+    addLog('Pipeline error: ' + e.message, 'var(--danger)');
+  }
+
+  btn.disabled = false; btn.textContent = '▶ Run Again';
+  loadHistory();
+}
+
+function handlePipelineEvent(d, addLog) {
+  if (d.type === 'pipeline_start') {
+    addLog(`Pipeline #${d.pipeline_id} started for ${d.filename}`, 'var(--accent2)');
+  } else if (d.type === 'stage_start') {
+    const el = document.getElementById(`stage-${d.stage}`);
+    if (el) { el.className = 'pipeline-stage running'; }
+    document.getElementById(`status-${d.stage}`).innerHTML = '<span class="stage-status running">▶ running</span>';
+    addLog(`▶ ${d.name} (${d.tool})`, 'var(--accent)');
+  } else if (d.type === 'stage_progress') {
+    const p = document.getElementById(`progress-${d.stage}`);
+    if (p) p.style.width = d.progress + '%';
+  } else if (d.type === 'stage_complete') {
+    const el = document.getElementById(`stage-${d.stage}`);
+    if (el) el.className = `pipeline-stage ${d.status}`;
+    const icon = d.status === 'pass' ? '✓' : d.status === 'warning' ? '⚠' : '✗';
+    const stageDuration = d.duration || `${(d.output && d.output.duration !== undefined) ? d.output.duration : 0}s`;
+    document.getElementById(`status-${d.stage}`).innerHTML = `<span class="stage-status ${d.status}">${icon} ${d.status} (${stageDuration})</span>`;
+    let details = '';
+    if (d.stage === 'unit_test' && d.status === 'warning') {
+      details = ' — no tests discovered';
+    } else if (d.stage === 'build' && d.status === 'pass' && d.output && d.output.command) {
+      details = ' — image build completed';
+    } else if (d.output && d.output.stderr && d.status !== 'pass') {
+      const compact = String(d.output.stderr).replace(/\s+/g, ' ').trim();
+      details = compact ? ` — ${compact.slice(0, 220)}` : '';
+    }
+    addLog(`${icon} Stage complete: ${d.status} in ${stageDuration}${details}`, d.status === 'pass' ? 'var(--success)' : 'var(--warn)');
+  } else if (d.type === 'stage_detail') {
+    if (d.stage === 'unit_test' && d.output) {
+      addLog(`  Tests: ${d.output.passed}/${d.output.tests_run} passed | Coverage: ${d.output.coverage}%`, 'var(--text-muted)');
+    } else if (d.stage === 'defect_scan' && d.output) {
+      addLog(`  ML Result: ${d.output.label} (${(d.output.probability*100).toFixed(1)}%)`, d.output.probability > 0.5 ? 'var(--danger)' : 'var(--success)');
+    } else if (d.stage === 'lint' && Array.isArray(d.output)) {
+      d.output.forEach(i => addLog(`  [${i.code}] ${i.message}`, i.severity === 'error' ? 'var(--danger)' : i.severity === 'warning' ? 'var(--warn)' : 'var(--text-muted)'));
+    } else if (d.stage === 'build' && d.output) {
+      addLog(`  Built: ${d.output.image} (${d.output.size})`, 'var(--accent2)');
+    } else if (d.stage === 'k8s_deploy' && d.output) {
+      addLog(`  Deployed ${d.output.replicas} replicas to ${d.output.namespace}`, 'var(--success)');
+    }
+  } else if (d.type === 'pipeline_blocked') {
+    if (d.stage && d.stage !== 'pipeline') {
+      const el = document.getElementById(`stage-${d.stage}`);
+      if (el) el.className = 'pipeline-stage blocked';
+    }
+    addLog(`🚫 ${d.reason}`, 'var(--danger)');
+  } else if (d.type === 'pipeline_complete') {
+    const c = d.status === 'success'
+      ? 'var(--success)'
+      : d.status === 'warning'
+        ? 'var(--warn)'
+        : 'var(--danger)';
+    addLog(`Pipeline #${d.pipeline_id} ${d.status.toUpperCase()} in ${d.duration}`, c);
+    if (d.reason) {
+      const normalizedReason = (d.status === 'warning' && String(d.reason).trim().toLowerCase() === 'warning')
+        ? 'One or more stages completed with warnings.'
+        : d.reason;
+      addLog(`Reason: ${normalizedReason}`, d.status === 'blocked' ? 'var(--danger)' : 'var(--warn)');
+    }
+  }
+}
+
+// History
+async function loadHistory() {
+  try {
+    const res = await fetch('/api/pipeline/history', {
+      headers: authHeaders(),
+      cache: 'no-store'
+    });
+    if (!res.ok) {
+      let msg = 'Unable to load pipeline history';
+      try {
+        const err = await res.json();
+        msg = err.error || msg;
+      } catch (e) {}
+      document.getElementById('history-content').innerHTML =
+        `<div class="empty-state"><div class="icon">⚠</div><p>${escHtml(msg)}</p></div>`;
+      return;
+    }
+
+    const data = await res.json();
+    if (!Array.isArray(data) || !data.length) {
+      document.getElementById('history-content').innerHTML =
+        '<div class="empty-state"><div class="icon">≡</div><p>No pipeline runs yet. Run the CI/CD pipeline after uploading a file.</p></div>';
+      return;
+    }
+
+    document.getElementById('history-content').innerHTML = `
+      <table class="history-table">
+        <thead><tr>
+          <th>ID</th><th>File</th><th>Risk</th><th>Status</th><th>Time</th>
+        </tr></thead>
+        <tbody>
+          ${data.map(r => `<tr>
+            <td style="font-family:var(--mono);font-size:0.75rem;color:var(--text-muted);">#${r.id}</td>
+            <td style="font-family:var(--mono);color:var(--accent2);">${r.filename}</td>
+            <td><span style="font-family:var(--mono);color:${r.probability>0.5?'var(--danger)':'var(--success)'};">${(r.probability*100).toFixed(1)}%</span></td>
+            <td><span class="status-pill ${r.status}">${r.status}</span></td>
+            <td style="font-size:0.75rem;color:var(--text-muted);">${new Date(r.timestamp).toLocaleTimeString()}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) {}
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+initAuth();
+</script>
+</body>
+</html>

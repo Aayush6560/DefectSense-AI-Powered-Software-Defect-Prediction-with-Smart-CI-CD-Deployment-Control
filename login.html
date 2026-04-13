@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://api.fontshare.com https://fonts.googleapis.com https://fonts.gstatic.com; font-src https://api.fontshare.com https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self'">
+<title>DefectSense — Login</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #020408;
+  --surface: rgba(255,255,255,0.04);
+  --surface-hover: rgba(255,255,255,0.07);
+  --border: rgba(255,255,255,0.08);
+  --border-bright: rgba(255,255,255,0.15);
+  --accent: #6366f1;
+  --accent-glow: rgba(99,102,241,0.3);
+  --accent2: #22d3ee;
+  --danger: #ef4444;
+  --success: #10b981;
+  --text: #f1f5f9;
+  --text-muted: #64748b;
+  --text-dim: #334155;
+  --radius: 10px;
+  --transition: 180ms cubic-bezier(0.16,1,0.3,1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Satoshi', sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; display: flex;
+  align-items: center; justify-content: center;
+  overflow: hidden; position: relative;
+  -webkit-font-smoothing: antialiased;
+}
+.bg-mesh {
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%, rgba(99,102,241,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 80%, rgba(34,211,238,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(139,92,246,0.06) 0%, transparent 70%);
+}
+.grid-overlay {
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.container { position: relative; z-index: 10; width: 100%; max-width: 440px; padding: 2rem; }
+
+.logo { text-align: center; margin-bottom: 2.5rem; }
+.logo-icon {
+  width: 56px; height: 56px; margin: 0 auto 1rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 16px; display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; box-shadow: 0 0 40px var(--accent-glow);
+}
+.logo h1 {
+  font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.6) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.logo p { color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem; font-family: 'JetBrains Mono', monospace; }
+
+.card {
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  border-radius: 20px; padding: 2rem; backdrop-filter: blur(20px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.tabs { display: flex; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 4px; margin-bottom: 1.75rem; gap: 4px; }
+.tab {
+  flex: 1; padding: 0.6rem; text-align: center; border-radius: 7px;
+  cursor: pointer; font-size: 0.875rem; font-weight: 500;
+  transition: all var(--transition); color: var(--text-muted); border: none; background: none;
+  font-family: inherit;
+}
+.tab.active { background: var(--surface-hover); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 7px; }
+
+.form-group { margin-bottom: 1rem; }
+label { display: block; font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 500; letter-spacing: 0.02em; }
+input {
+  width: 100%; padding: 0.75rem 1rem;
+  background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); font-family: inherit; font-size: 0.9375rem;
+  transition: border-color var(--transition), box-shadow var(--transition); outline: none;
+}
+input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+input::placeholder { color: var(--text-dim); }
+
+.btn {
+  width: 100%; padding: 0.875rem;
+  background: var(--accent);
+  border: none; border-radius: var(--radius);
+  color: #fff; font-family: inherit; font-size: 0.9375rem; font-weight: 600;
+  cursor: pointer; transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+  box-shadow: 0 4px 20px var(--accent-glow); margin-top: 0.5rem;
+}
+.btn:hover { background: #4f46e5; box-shadow: 0 8px 30px var(--accent-glow); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn:focus-visible { outline: 2px solid var(--accent2); outline-offset: 3px; }
+
+.error-msg {
+  background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 8px; padding: 0.75rem 1rem;
+  color: #fca5a5; font-size: 0.875rem; margin-top: 1rem; display: none;
+}
+.success-banner {
+  background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 8px; padding: 0.75rem 1rem;
+  color: #6ee7b7; font-size: 0.875rem; margin-top: 1rem; display: none; text-align: center;
+}
+.demo-accounts { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+.demo-accounts p { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.demo-chips { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+.demo-chip {
+  padding: 0.35rem 0.75rem; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; transition: border-color var(--transition), color var(--transition), background var(--transition);
+  color: var(--text-muted);
+}
+.demo-chip:hover { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.1); }
+.demo-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.floating-particle {
+  position: fixed; border-radius: 50%;
+  background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+  animation: float linear infinite; opacity: 0.15; pointer-events: none; z-index: 1;
+}
+@keyframes float {
+  0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+  10%  { opacity: 0.15; }
+  90%  { opacity: 0.15; }
+  100% { transform: translateY(-100px) scale(1); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .floating-particle { animation: none; } }
+@media (max-width: 480px) { .container { padding: 1rem; } .card { padding: 1.5rem; } }
+</style>
+</head>
+<body>
+<div class="bg-mesh" aria-hidden="true"></div>
+<div class="grid-overlay" aria-hidden="true"></div>
+
+<div class="container">
+  <div class="logo">
+    <div class="logo-icon" aria-hidden="true">⬡</div>
+    <h1>DefectSense</h1>
+    <p>// MLOps Defect Detection Platform</p>
+  </div>
+
+  <div class="card" role="main">
+    <div class="tabs" role="tablist">
+      <button class="tab active" role="tab" aria-selected="true"  aria-controls="login-form"    id="tab-login"    onclick="switchTab('login')">Sign In</button>
+      <button class="tab"        role="tab" aria-selected="false" aria-controls="register-form" id="tab-register" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form" role="tabpanel" aria-labelledby="tab-login">
+      <div class="form-group">
+        <label for="login-user">Username</label>
+        <input type="text" id="login-user" placeholder="Enter username"
+               autocomplete="username" spellcheck="false" autocapitalize="none">
+      </div>
+      <div class="form-group">
+        <label for="login-pass">Password</label>
+        <input type="password" id="login-pass" placeholder="Enter password"
+               autocomplete="current-password">
+      </div>
+      <button class="btn" id="login-btn">Sign In →</button>
+      <div class="error-msg" id="login-error" role="alert" aria-live="polite"></div>
+
+      <div class="demo-accounts">
+        <p>Quick Demo Access</p>
+        <div class="demo-chips">
+          <button class="demo-chip" data-user="admin"     data-role="admin">admin · admin</button>
+          <button class="demo-chip" data-user="demo"      data-role="analyst">demo · analyst</button>
+          <button class="demo-chip" data-user="professor" data-role="viewer">professor · viewer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Register Form -->
+    <div id="register-form" style="display:none" role="tabpanel" aria-labelledby="tab-register">
+      <div class="form-group">
+        <label for="reg-name">Full Name</label>
+        <input type="text" id="reg-name" placeholder="Your name" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label for="reg-user">Username</label>
+        <input type="text" id="reg-user" placeholder="Letters, numbers, _ or -"
+               autocomplete="username" spellcheck="false" autocapitalize="none"
+               minlength="3" maxlength="32">
+      </div>
+      <div class="form-group">
+        <label for="reg-pass">Password</label>
+        <input type="password" id="reg-pass" placeholder="At least 8 characters"
+               autocomplete="new-password" minlength="8">
+      </div>
+      <button class="btn" id="reg-btn">Create Account →</button>
+      <div class="error-msg"    id="reg-error"   role="alert" aria-live="polite"></div>
+      <div class="success-banner" id="reg-success">Account created! Redirecting...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function setSession(userData) {
+  // Cookie token is set by server; keep only display profile in storage.
+  localStorage.setItem('ds_user', JSON.stringify(userData));
+  sessionStorage.setItem('ds_user', JSON.stringify(userData));
+}
+
+// Particles
+(function createParticles() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = 'floating-particle';
+    p.setAttribute('aria-hidden', 'true');
+    const size = Math.random() * 200 + 100;
+    p.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;animation-duration:${Math.random()*20+15}s;animation-delay:${Math.random()*15}s`;
+    document.body.appendChild(p);
+  }
+})();
+
+// Tab switching
+function switchTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('tab-login').classList.toggle('active', isLogin);
+  document.getElementById('tab-register').classList.toggle('active', !isLogin);
+  document.getElementById('tab-login').setAttribute('aria-selected', isLogin);
+  document.getElementById('tab-register').setAttribute('aria-selected', !isLogin);
+  document.getElementById('login-form').style.display = isLogin ? 'block' : 'none';
+  document.getElementById('register-form').style.display = isLogin ? 'none' : 'block';
+}
+
+// Demo chip — fills username only; password fetched via a lookup on the server
+// Passwords are NOT embedded in the HTML
+const DEMO_USERS = ['admin', 'demo', 'professor'];
+document.querySelectorAll('.demo-chip[data-user]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const user = chip.dataset.user;
+    if (!DEMO_USERS.includes(user)) return;
+    document.getElementById('login-user').value = user;
+    document.getElementById('login-pass').focus();
+    switchTab('login');
+  });
+});
+
+// Keyboard: Enter submits active form
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('reg-pass').addEventListener('keydown',   e => { if (e.key === 'Enter') doRegister(); });
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;   // textContent — never innerHTML
+  el.style.display = 'block';
+}
+function hideError(id) {
+  const el = document.getElementById(id);
+  el.textContent = '';
+  el.style.display = 'none';
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  hideError('login-error');
+
+  if (!username || !password) { showError('login-error', 'Please enter username and password.'); return; }
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Signing in...';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showError('login-error', data.error || (res.status === 429 ? 'Too many attempts. Wait 5 minutes.' : 'Invalid credentials.'));
+      return;
+    }
+    setSession({ username: data.username, name: data.name, role: data.role });
+    window.location.href = '/app';
+  } catch {
+    showError('login-error', 'Network error — is the server running?');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign In →';
+  }
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-user').value.trim();
+  const password = document.getElementById('reg-pass').value;
+  const name     = document.getElementById('reg-name').value.trim();
+  hideError('reg-error');
+  document.getElementById('reg-success').style.display = 'none';
+
+  if (!username || !password) { showError('reg-error', 'Username and password are required.'); return; }
+  if (password.length < 8)    { showError('reg-error', 'Password must be at least 8 characters.'); return; }
+
+  const btn = document.getElementById('reg-btn');
+  btn.disabled = true; btn.textContent = 'Creating account...';
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, name }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showError('reg-error', data.error || 'Registration failed.'); return; }
+    setSession({ username: data.username, name: data.name, role: data.role });
+    document.getElementById('reg-success').style.display = 'block';
+    setTimeout(() => window.location.href = '/app', 1200);
+  } catch {
+    showError('reg-error', 'Network error. Please try again.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Account →';
+  }
+}
+
+// Redirect if already authenticated
+(function checkExistingSession() {
+  // Clear old token keys from previous frontend versions.
+  localStorage.removeItem('ds_token');
+  localStorage.removeItem('token');
+  sessionStorage.removeItem('token');
+
+  fetch('/api/auth/verify')
+    .then(r => { if (r.ok) window.location.href = '/app'; })
+    .catch(() => {});
+})();
+</script>
+</body>
+</html>

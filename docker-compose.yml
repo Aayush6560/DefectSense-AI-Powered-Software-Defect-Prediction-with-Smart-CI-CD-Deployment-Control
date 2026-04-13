@@ -1,0 +1,42 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        REQUIREMENTS_FILE: ${REQUIREMENTS_FILE:-requirements.txt}
+    image: proj3-defectsense:real
+    container_name: proj3-defectsense
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=false
+      - PYTHONUNBUFFERED=1
+      - SECRET_KEY=${SECRET_KEY:-defectsense-dev-secret-change-me}
+    volumes:
+      - ./ml/models:/app/ml/models
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "0"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.2"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
